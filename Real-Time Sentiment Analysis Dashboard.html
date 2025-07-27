@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Sentiment Analysis Dashboard</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* Align to top to allow scrolling if content is long */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .dashboard-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 1000px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sentiment-bar {
+            height: 20px;
+            border-radius: 5px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* Scrollbar styling for the live feed */
+        .live-feed-container {
+            max-height: 400px;
+            /* Limit height for scrollability */
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .live-feed-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .live-feed-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .live-feed-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .live-feed-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Modal styles (removed as Gemini feature is removed) */
+        /* .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+            transition: color 0.2s;
+        }
+
+        .close-button:hover {
+            color: #374151;
+        } */
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-6 text-center">Real-Time Social Media Sentiment</h1>
+
+        <!-- Sentiment Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div
+                class="bg-gradient-to-r from-green-400 to-green-600 text-white p-6 rounded-xl shadow-lg flex flex-col items-center justify-center">
+                <div class="text-5xl font-bold" id="positiveCount">0</div>
+                <div class="text-lg mt-2">Positive</div>
+            </div>
+            <div
+                class="bg-gradient-to-r from-red-400 to-red-600 text-white p-6 rounded-xl shadow-lg flex flex-col items-center justify-center">
+                <div class="text-5xl font-bold" id="negativeCount">0</div>
+                <div class="text-lg mt-2">Negative</div>
+            </div>
+            <div
+                class="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-6 rounded-xl shadow-lg flex flex-col items-center justify-center">
+                <div class="text-5xl font-bold" id="neutralCount">0</div>
+                <div class="text-lg mt-2">Neutral</div>
+            </div>
+        </div>
+
+        <!-- Sentiment Distribution Chart -->
+        <div class="bg-gray-50 p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Sentiment Distribution</h2>
+            <div class="space-y-4">
+                <div class="flex items-center">
+                    <span class="w-24 text-gray-600 font-medium">Positive:</span>
+                    <div class="flex-grow bg-gray-200 rounded-full">
+                        <div id="positiveBar" class="sentiment-bar bg-green-500" style="width: 0%;"></div>
+                    </div>
+                    <span id="positivePercent" class="ml-4 w-12 text-right font-semibold text-gray-700">0%</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-24 text-gray-600 font-medium">Negative:</span>
+                    <div class="flex-grow bg-gray-200 rounded-full">
+                        <div id="negativeBar" class="sentiment-bar bg-red-500" style="width: 0%;"></div>
+                    </div>
+                    <span id="negativePercent" class="ml-4 w-12 text-right font-semibold text-gray-700">0%</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="w-24 text-gray-600 font-medium">Neutral:</span>
+                    <div class="flex-grow bg-gray-200 rounded-full">
+                        <div id="neutralBar" class="sentiment-bar bg-blue-500" style="width: 0%;"></div>
+                    </div>
+                    <span id="neutralPercent" class="ml-4 w-12 text-right font-semibold text-gray-700">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Feed Section -->
+        <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Live Feed</h2>
+            <div id="liveFeed" class="live-feed-container">
+                <!-- Simulated tweets will be appended here -->
+                <p class="text-gray-500 text-center py-4">Waiting for incoming social media data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Response Modal (Removed) -->
+    <!-- <div id="llmResponseModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="close-button" onclick="hideLLMResponseModal()">&times;</button>
+            <h3 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-4"></h3>
+            <div id="modalContent" class="text-gray-700 leading-relaxed"></div>
+            <div id="modalLoading" class="text-center mt-4 hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                <p class="text-gray-600 mt-2">Loading...</p>
+            </div>
+        </div>
+    </div> -->
+
+    <script>
+        // Simulated social media data (tweets)
+        const simulatedTweets = [
+            "This new product is absolutely amazing! So happy with it.",
+            "I'm feeling really sad about the news today. It's truly disappointing.",
+            "Just had coffee. It was okay.",
+            "The customer service was excellent, a truly positive experience!",
+            "Worst day ever. Everything went wrong.",
+            "The weather is quite neutral, neither good nor bad.",
+            "Loving the new update, it's fantastic!",
+            "This movie was terrible, a complete waste of time.",
+            "Attended a conference today. Learned a few things.",
+            "Feeling great after a long walk in the park.",
+            "The traffic is awful right now.",
+            "Just finished a book, it was pretty good.",
+            "Indifferent about the new policy changes.",
+            "Absolutely thrilled with the results!",
+            "So disappointed with the outcome.",
+            "The food was decent, nothing special.",
+            "What a wonderful surprise!",
+            "This situation is making me very angry.",
+            "It's just another Tuesday.",
+            "Incredible performance by the team!",
+            "Feeling quite negative about the current situation.",
+            "The new feature is neither exciting nor boring.",
+            "Best concert ever!",
+            "I hate how things are going.",
+            "Just observing the current trends."
+        ];
+
+        let tweetIndex = 0;
+        let sentimentCounts = {
+            positive: 0,
+            negative: 0,
+            neutral: 0
+        };
+        let totalTweets = 0;
+
+        // Get DOM elements
+        const positiveCountElem = document.getElementById('positiveCount');
+        const negativeCountElem = document.getElementById('negativeCount');
+        const neutralCountElem = document.getElementById('neutralCount');
+        const positiveBar = document.getElementById('positiveBar');
+        const negativeBar = document.getElementById('negativeBar');
+        const neutralBar = document.getElementById('neutralBar');
+        const positivePercent = document.getElementById('positivePercent');
+        const negativePercent = document.getElementById('negativePercent');
+        const neutralPercent = document.getElementById('neutralPercent');
+        const liveFeed = document.getElementById('liveFeed');
+
+        // Modal elements (Removed as Gemini feature is removed)
+        // const llmResponseModal = document.getElementById('llmResponseModal');
+        // const modalTitle = document.getElementById('modalTitle');
+        // const modalContent = document.getElementById('modalContent');
+        // const modalLoading = document.getElementById('modalLoading');
+
+        /**
+         * Simulates sentiment analysis based on keywords.
+         * In a real application, this would use a robust NLP library like TextBlob, Vader, or BERT.
+         * @param {string} text - The input text to analyze.
+         * @returns {{sentiment: string, color: string}} - The classified sentiment and its corresponding Tailwind color class.
+         */
+        function analyzeSentiment(text) {
+            text = text.toLowerCase();
+            const positiveWords = ["great", "happy", "love", "excellent", "good", "amazing", "fantastic", "awesome", "thrilled", "wonderful", "incredible", "best"];
+            const negativeWords = ["bad", "sad", "hate", "terrible", "poor", "awful", "disappointing", "worst", "angry"];
+
+            let positiveScore = positiveWords.filter(word => text.includes(word)).length;
+            let negativeScore = negativeWords.filter(word => text.includes(word)).length;
+
+            if (positiveScore > negativeScore) {
+                return { sentiment: "Positive", color: "text-green-500" };
+            } else if (negativeScore > positiveScore) {
+                return { sentiment: "Negative", color: "text-red-500" };
+            } else {
+                return { sentiment: "Neutral", color: "text-blue-500" };
+            }
+        }
+
+        /**
+         * Updates the dashboard UI with current sentiment counts and percentages.
+         */
+        function updateDashboard() {
+            positiveCountElem.textContent = sentimentCounts.positive;
+            negativeCountElem.textContent = sentimentCounts.negative;
+            neutralCountElem.textContent = sentimentCounts.neutral;
+
+            if (totalTweets === 0) {
+                positiveBar.style.width = '0%';
+                negativeBar.style.width = '0%';
+                neutralBar.style.width = '0%';
+                positivePercent.textContent = '0%';
+                negativePercent.textContent = '0%';
+                neutralPercent.textContent = '0%';
+                return;
+            }
+
+            const positivePct = ((sentimentCounts.positive / totalTweets) * 100).toFixed(1);
+            const negativePct = ((sentimentCounts.negative / totalTweets) * 100).toFixed(1);
+            const neutralPct = ((sentimentCounts.neutral / totalTweets) * 100).toFixed(1);
+
+            positiveBar.style.width = `${positivePct}%`;
+            negativeBar.style.width = `${negativePct}%`;
+            neutralBar.style.width = `${neutralPct}%`;
+
+            positivePercent.textContent = `${positivePct}%`;
+            negativePercent.textContent = `${negativePct}%`;
+            neutralPercent.textContent = `${neutralPct}%`;
+        }
+
+        // Functions related to LLM response modal (Removed)
+        // function showLLMResponseModal(title, content) {
+        //     modalTitle.textContent = title;
+        //     modalContent.innerHTML = content;
+        //     modalLoading.classList.add('hidden');
+        //     modalContent.classList.remove('hidden');
+        //     llmResponseModal.classList.remove('hidden');
+        // }
+
+        // function hideLLMResponseModal() {
+        //     llmResponseModal.classList.add('hidden');
+        //     modalTitle.textContent = '';
+        //     modalContent.textContent = '';
+        //     modalLoading.classList.add('hidden');
+        // }
+
+        // function showLoadingInModal(title) {
+        //     modalTitle.textContent = title;
+        //     modalContent.classList.add('hidden');
+        //     modalLoading.classList.remove('hidden');
+        //     llmResponseModal.classList.remove('hidden');
+        // }
+
+        // Functions related to Gemini API call (Removed)
+        // async function callGeminiAPI(prompt, modalHeading) {
+        //     showLoadingInModal(modalHeading);
+
+        //     try {
+        //         let chatHistory = [];
+        //         chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        //         const payload = { contents: chatHistory };
+        //         const apiKey = ""; 
+        //         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        //         const response = await fetch(apiUrl, {
+        //             method: 'POST',
+        //             headers: { 'Content-Type': 'application/json' },
+        //             body: JSON.stringify(payload)
+        //         });
+
+        //         if (!response.ok) {
+        //             const errorData = await response.json();
+        //             throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+        //         }
+
+        //         const result = await response.json();
+
+        //         if (result.candidates && result.candidates.length > 0 &&
+        //             result.candidates[0].content && result.candidates[0].content.parts &&
+        //             result.candidates[0].content.parts.length > 0) {
+        //             const text = result.candidates[0].content.parts[0].text;
+        //             showLLMResponseModal(modalHeading, text);
+        //         } else {
+        //             showLLMResponseModal(modalHeading, "No response from LLM or unexpected format.");
+        //         }
+        //     } catch (error) {
+        //         console.error("Error calling Gemini API:", error);
+        //         showLLMResponseModal(modalHeading, `Failed to get a response: ${error.message}. Please ensure you have network connectivity.`);
+        //     }
+        // }
+
+        // function summarizeTweet(tweetText) {
+        //     const prompt = `Please summarize the following social media post concisely: "${tweetText}"`;
+        //     callGeminiAPI(prompt, "Tweet Summary ✨");
+        // }
+
+        // function explainSentiment(tweetText, sentiment) {
+        //     const prompt = `The following social media post was classified as ${sentiment}. Please explain why this sentiment might be appropriate for the text: "${tweetText}"`;
+        //     callGeminiAPI(prompt, `Explanation for ${sentiment} Sentiment ✨`);
+        // }
+
+        /**
+         * Simulates receiving a new tweet and updates the dashboard.
+         */
+        function receiveNewTweet() {
+            if (tweetIndex >= simulatedTweets.length) {
+                tweetIndex = 0; // Loop back to the beginning for continuous simulation
+            }
+
+            const tweetText = simulatedTweets[tweetIndex];
+            tweetIndex++;
+            totalTweets++;
+
+            const sentimentResult = analyzeSentiment(tweetText);
+            const sentiment = sentimentResult.sentiment;
+            const sentimentColor = sentimentResult.color;
+
+            // Update sentiment counts
+            sentimentCounts[sentiment.toLowerCase()]++;
+
+            // Create and append the new tweet element to the live feed
+            const tweetElement = document.createElement('div');
+            tweetElement.className = `p-3 mb-2 rounded-lg shadow-sm bg-white border border-gray-200 flex flex-col`; // Changed to flex-col for buttons
+            tweetElement.innerHTML = `
+                <div class="flex items-center mb-2">
+                    <span class="font-bold text-sm mr-2 ${sentimentColor}">${sentiment}:</span>
+                    <p class="text-gray-800 text-sm flex-grow">${tweetText}</p>
+                </div>
+                <!-- Removed buttons for Gemini features -->
+            `;
+
+            // Remove the initial "Waiting for data" message if present
+            if (liveFeed.querySelector('p.text-gray-500')) {
+                liveFeed.innerHTML = '';
+            }
+
+            // Add new tweet to the top of the feed
+            liveFeed.prepend(tweetElement);
+
+            // Keep only the last 20 tweets to prevent excessive growth
+            if (liveFeed.children.length > 20) {
+                liveFeed.removeChild(liveFeed.lastChild);
+            }
+
+            // Update the dashboard visuals
+            updateDashboard();
+        }
+
+        // Initialize dashboard on load
+        window.onload = function () {
+            updateDashboard();
+            // Start simulating new tweets every 1.5 seconds
+            setInterval(receiveNewTweet, 1500);
+        };
+    </script>
+</body>
+
+</html>
